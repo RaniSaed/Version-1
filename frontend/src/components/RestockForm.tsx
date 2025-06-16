@@ -24,7 +24,7 @@ import { useLowStockProducts } from "@/hooks/useLowStockProducts";
 import { useRestock, RestockInput } from "@/hooks/useRestock";
 import { toast } from "@/hooks/use-toast";
 
-// הגדרת סכימת הטופס
+// סכימת הטופס
 const formSchema = z.object({
   productId: z.string({
     required_error: "Please select a product",
@@ -47,12 +47,13 @@ const RestockForm: React.FC = () => {
     },
   });
 
-  // שלח את הבקשה לאחר מילוי הטופס
-  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
     const restockData: RestockInput = {
       productId: values.productId,
       quantity: values.quantity,
     };
+
+    console.log("📦 Sending restock:", restockData); // בדיקת DEBUG
 
     restock(restockData, {
       onSuccess: () => {
@@ -75,7 +76,7 @@ const RestockForm: React.FC = () => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* שדה בחירת מוצר */}
+        {/* בחירת מוצר */}
         <FormField
           control={form.control}
           name="productId"
@@ -100,7 +101,7 @@ const RestockForm: React.FC = () => {
                   ) : products && products.length > 0 ? (
                     products.map((product: any) => (
                       <SelectItem key={product.id} value={String(product.id)}>
-                        {product.name} ({product.stock_level}/{product.lowStockThreshold || 10})
+                        {product.name} ({product.stockLevel}/{product.lowStockThreshold || 10})
                       </SelectItem>
                     ))
                   ) : (
@@ -132,7 +133,6 @@ const RestockForm: React.FC = () => {
           )}
         />
 
-        {/* כפתור שליחה */}
         <Button type="submit" disabled={isPending || !form.watch("productId")}>
           {isPending ? "Processing..." : "Restock Product"}
         </Button>

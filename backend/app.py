@@ -124,6 +124,39 @@ def product_detail(product_id):
 def get_restock_logs():
     logs = RestockLog.query.order_by(RestockLog.timestamp.desc()).limit(5).all()
     return jsonify([log.to_dict() for log in logs]), 200
+@app.route('/api/products/<int:product_id>/restock', methods=['POST'])
+def restock_product(product_id):
+    product = Product.query.get_or_404(product_id)
+    data = request.get_json()
+
+    try:
+        quantity = int(data['quantity'])
+        if quantity <= 0:
+            return jsonify({"error": "Quantity must be positive"}), 400
+
+        product.stock_level += quantity
+        db.session.add(RestockLog(product_id=product.id, quantity=quantity))
+
+        # ניהול טבלת low_stock_products
+        if product.stock_level > product.low_stock_threshold:
+            db.session.query(LowStockProduct).filter_by(product_id=product.id).delete()
+        else:
+            entry = LowStockProduct.query.filter_by(product_id=product.id).first()
+            if entry:
+                entry.stock_level = product.stock_level
+            else:
+                db.session.add(LowStockProduct(
+                    product_id=product.id,
+                    name=product.name,
+                    sku=product.sku,
+                    stock_level=product.stock_level
+                ))
+
+        db.session.commit()
+        return jsonify(product.to_dict()), 200
+
+    except (KeyError, ValueError):
+        return jsonify({"error": "Invalid request"}), 400
 
 @app.route('/api/products/low-stock', methods=['GET'])
 def low_stock_products():
