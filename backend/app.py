@@ -10,10 +10,10 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, Counter, His
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 app.config.from_object(Config)
-
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 db.init_app(app)
 
+# ---------- Prometheus Metrics ----------
 REQUEST_COUNTER = Counter(
     'flask_http_request_total',
     'Total number of HTTP requests grouped by method, endpoint and status',
@@ -43,6 +43,52 @@ def after_request(response):
 @app.route('/metrics')
 def metrics():
     return Response(generate_latest(REGISTRY), mimetype=CONTENT_TYPE_LATEST)
+
+# ---------- USER API ----------
+
+@app.route('/api/user/products', methods=['GET'])
+def user_get_products():
+    products = Product.query.all()
+    return jsonify([p.to_dict() for p in products]), 200
+
+
+@app.route('/api/user/products/<int:product_id>/purchase', methods=['POST'])
+def user_purchase_product(product_id):
+    data = request.get_json()
+    quantity = data.get('quantity', 0)
+    product = Product.query.get(product_id)
+
+    if not product:
+        return jsonify({'error': 'Product not found'}), 404
+
+    if product.stock_level < quantity:
+        return jsonify({'error': 'Not enough stock'}), 400
+
+    product.stock_level -= quantity
+
+    # ✅ הוספת רישום בטבלת RestockLog עם כמות שלילית
+    db.session.add(RestockLog(product_id=product.id, quantity=-quantity))
+
+    # ✅ עדכון בטבלת LowStockProduct אם צריך
+    if product.stock_level > product.low_stock_threshold:
+        db.session.query(LowStockProduct).filter_by(product_id=product.id).delete()
+    else:
+        entry = LowStockProduct.query.filter_by(product_id=product.id).first()
+        if entry:
+            entry.stock_level = product.stock_level
+        else:
+            db.session.add(LowStockProduct(
+                product_id=product.id,
+                name=product.name,
+                sku=product.sku,
+                stock_level=product.stock_level
+            ))
+
+    db.session.commit()
+    return jsonify({'message': 'Purchase successful', 'remaining_stock': product.stock_level}), 200
+
+
+# ---------- ADMIN API (קיים מהמערכת שלך) ----------
 
 @app.route('/api/products', methods=['GET', 'POST'])
 def manage_products():
@@ -120,10 +166,6 @@ def product_detail(product_id):
         db.session.commit()
         return jsonify({'result': True}), 204
 
-@app.route('/api/restocks', methods=['GET'])
-def get_restock_logs():
-    logs = RestockLog.query.order_by(RestockLog.timestamp.desc()).limit(5).all()
-    return jsonify([log.to_dict() for log in logs]), 200
 @app.route('/api/products/<int:product_id>/restock', methods=['POST'])
 def restock_product(product_id):
     product = Product.query.get_or_404(product_id)
@@ -137,7 +179,6 @@ def restock_product(product_id):
         product.stock_level += quantity
         db.session.add(RestockLog(product_id=product.id, quantity=quantity))
 
-        # ניהול טבלת low_stock_products
         if product.stock_level > product.low_stock_threshold:
             db.session.query(LowStockProduct).filter_by(product_id=product.id).delete()
         else:
@@ -158,10 +199,17 @@ def restock_product(product_id):
     except (KeyError, ValueError):
         return jsonify({"error": "Invalid request"}), 400
 
+# ---------- Monitoring / Dashboard (כבר קיים) ----------
+
 @app.route('/api/products/low-stock', methods=['GET'])
 def low_stock_products():
     entries = LowStockProduct.query.order_by(LowStockProduct.timestamp.desc()).all()
     return jsonify([entry.to_dict() for entry in entries]), 200
+
+@app.route('/api/restocks', methods=['GET'])
+def get_restock_logs():
+    logs = RestockLog.query.order_by(RestockLog.timestamp.desc()).limit(5).all()
+    return jsonify([log.to_dict() for log in logs]), 200
 
 @app.route('/api/dashboard/summary', methods=['GET'])
 def dashboard_summary():
@@ -236,4 +284,3 @@ if __name__ == '__main__':
         for row in result:
             print("🧠 Flask DB OID:", row[0], "| Name:", row[1])
     app.run(host='0.0.0.0', port=5000)
-
