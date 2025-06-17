@@ -24,7 +24,6 @@ import { useLowStockProducts } from "@/hooks/useLowStockProducts";
 import { useRestock, RestockInput } from "@/hooks/useRestock";
 import { toast } from "@/hooks/use-toast";
 
-// סכימת הטופס
 const formSchema = z.object({
   productId: z.string({
     required_error: "Please select a product",
@@ -53,7 +52,7 @@ const RestockForm: React.FC = () => {
       quantity: values.quantity,
     };
 
-    console.log("📦 Sending restock:", restockData); // בדיקת DEBUG
+    console.log("📦 Sending restock:", restockData);
 
     restock(restockData, {
       onSuccess: () => {
@@ -76,7 +75,7 @@ const RestockForm: React.FC = () => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {/* בחירת מוצר */}
+        {/* Select Product */}
         <FormField
           control={form.control}
           name="productId"
@@ -99,7 +98,7 @@ const RestockForm: React.FC = () => {
                       Loading products...
                     </SelectItem>
                   ) : products && products.length > 0 ? (
-                    products.map((product: any) => (
+                    products.map((product) => (
                       <SelectItem key={product.id} value={String(product.id)}>
                         {product.name} ({product.stockLevel}/{product.lowStockThreshold || 10})
                       </SelectItem>
@@ -117,7 +116,7 @@ const RestockForm: React.FC = () => {
           )}
         />
 
-        {/* שדה כמות */}
+        {/* Quantity */}
         <FormField
           control={form.control}
           name="quantity"
