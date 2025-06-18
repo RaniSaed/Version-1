@@ -67,6 +67,7 @@ class LowStockProduct(db.Model):
     name = db.Column(db.String(100), nullable=False)
     sku = db.Column(db.String(50), nullable=False)
     stock_level = db.Column(db.Integer, nullable=False)
+    low_stock_threshold = db.Column(db.Integer, nullable=False)  # ✅ חשוב!
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
@@ -76,5 +77,6 @@ class LowStockProduct(db.Model):
             "name": self.name,
             "sku": self.sku,
             "stock_level": self.stock_level,
+            "low_stock_threshold": self.low_stock_threshold,  # ✅ החזרת השדה
             "timestamp": self.timestamp.isoformat() if self.timestamp else None
         }

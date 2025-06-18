@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Product } from "@/types";
 
-// ✅ טוען את המוצרים עם מלאי נמוך מה-API
 const fetchLowStockProducts = async (): Promise<Product[]> => {
   const response = await fetch("http://localhost:5000/api/products/low-stock");
   if (!response.ok) {
@@ -10,13 +9,12 @@ const fetchLowStockProducts = async (): Promise<Product[]> => {
 
   const raw = await response.json();
 
-  // ✅ חשוב: משתמשים ב-product_id ולא ב-id, כי id שייך לטבלת low_stock_products
   return raw.map((product: any) => ({
-    id: product.product_id, // ✅ זה ה-ID האמיתי של המוצר
+    id: product.product_id,
     name: product.name,
     sku: product.sku,
     stockLevel: product.stock_level,
-    lowStockThreshold: product.low_stock_threshold ?? 10,
+    lowStockThreshold: product.low_stock_threshold,
     timestamp: product.timestamp,
     category: product.category ?? "",
     price: product.price ?? 0,
@@ -25,7 +23,6 @@ const fetchLowStockProducts = async (): Promise<Product[]> => {
   }));
 };
 
-// ✅ Hook לשימוש בנתוני מוצרים עם מלאי נמוך
 export function useLowStockProducts() {
   return useQuery({
     queryKey: ["lowStockProducts"],

@@ -1,5 +1,4 @@
 // src/hooks/useRestock.ts
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
@@ -8,12 +7,12 @@ export interface RestockInput {
   quantity: number;
 }
 
-const API_URL = import.meta.env.VITE_API_URL; // ✅ http://localhost:5000/api
+const API_URL = import.meta.env.VITE_API_URL;
 
 const restockProduct = async ({ productId, quantity }: RestockInput) => {
   const numericId = parseInt(productId);
   const response = await axios.post(
-    `${API_URL}/products/${numericId}/restock`, // ✅ לא מוסיפים עוד /api
+    `${API_URL}/products/${numericId}/restock`,
     { quantity }
   );
   return response.data;
